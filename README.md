@@ -18,9 +18,9 @@ I am building this project over one week, adding new commands and complexity dai
   - [x] REPL (Read-Eval-Print Loop)
   - [x] Input parsing using `bufio`
   - [x] Commands: `exit`, `echo`
-- [ ] **Day 2: Navigation**
-  - [ ] Commands: `pwd`, `cd`
-  - [ ] Concepts: Process state, `os.Getwd`, `os.Chdir`
+- [x] **Day 2: Navigation**
+  - [x] Commands: `pwd`, `cd`
+  - [x] Concepts: Process state, `os.Getwd`, `os.Chdir`
 - [ ] **Day 3: Inspection**
   - [ ] Commands: `ls`, `cat`
   - [ ] Concepts: File descriptors, `os.ReadDir`, `os.ReadFile`
@@ -60,8 +60,12 @@ I am building this project over one week, adding new commands and complexity dai
     ```bash
     gosh> echo hello world
     hello world
-    gosh> echo    multiple     spaces
-    multiple spaces
+    gosh> pwd
+    C:\Users\USER\Desktop\my-gosh
+    gosh> cd ~
+    gosh> pwd
+    C:\Users\USER
+    gosh> cd Desktop/my-gosh
     gosh> exit
     Goodbye!
     ```
@@ -80,8 +84,15 @@ I learned that standard `fmt.Scanln` is insufficient for a shell because it stop
 * Used `scanner.Scan()` return value to detect EOF and exit gracefully
 * Combined with `strings.Fields()` to intelligently parse input while handling edge cases (empty input, multiple spaces, tabs)
 
-### **2. System Interaction**
-*Upcoming: Notes on how `os.Getwd` interacts with the kernel and why `cd` must be a shell builtin.*
+### **2. System Interaction & Process State**
+I discovered that `cd` **must** be implemented as a shell builtin (not an external command) because it modifies the process's working directory. If `cd` were external, it would change the child process's directory, not the shell's.
+
+**Key Implementation Details:**
+* `os.Getwd()` retrieves the current working directory from the kernel
+* `os.Chdir()` changes the process's working directory via system call
+* Added home directory support: running `cd` with no arguments takes you home
+* Implemented tilde expansion: `cd ~` and `cd ~/path` work correctly
+* Used `os.UserHomeDir()` to portably get the user's home across Windows/Linux/macOS
 
 ### **3. File Streams**
 *Upcoming: Notes on `io.Copy`, file descriptors, and using `defer` for resource cleanup.*
@@ -104,8 +115,16 @@ I learned that standard `fmt.Scanln` is insufficient for a shell because it stop
   * Understanding `break` (exits loop/switch) vs `return` (exits function) for the `exit` command
 * **Technical Insight:** The scanner must be created **once** before the loop (not inside it) for efficiency, as it maintains an internal buffer that would be lost if recreated each iteration.
 
-### Day 2: Navigation
-* *Pending...*
+### Day 2: Navigation ✅
+* **Progress:** Implemented directory navigation commands with robust path handling.
+* **Commands Implemented:** `pwd`, `cd`
+* **Key Learning:** The `cd` command **must** be a shell builtin because it changes the shell process's own working directory. If it were an external program, it would only change the child process's directory and have no effect on the parent shell.
+* **Challenges Solved:**
+  * Handling `cd` with no arguments (should go to home directory)
+  * Implementing tilde expansion (`~` and `~/path`) using `strings.HasPrefix()` and `strings.Replace()`
+  * Cross-platform home directory detection using `os.UserHomeDir()`
+  * Proper error handling when directory doesn't exist or permission denied
+* **Technical Insight:** Windows uses backslashes (`\`) while Unix uses forward slashes (`/`) for paths, but Go's `os` package handles both transparently. The shell correctly displays Windows-style paths on Windows and Unix-style paths on Unix systems.
 
 ### Day 3: Inspection
 * *Pending...*
