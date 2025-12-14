@@ -28,6 +28,43 @@ func main() {
 			return
 		case "echo":
 			fmt.Println(strings.Join(parts[1:], " "))
+		case "pwd":
+			dir, err := os.Getwd()
+			if err != nil {
+				fmt.Printf("Error getting current directory: %v\n", err)
+				continue
+			}
+			fmt.Println(dir)
+		case "cd":
+			var targetDir string
+
+			// Handle no arguments: go to home directory
+			if len(parts) < 2 {
+				home, err := os.UserHomeDir()
+				if err != nil {
+					fmt.Printf("cd: %s\n", err)
+					continue
+				}
+				targetDir = home
+			} else {
+				targetDir = parts[1]
+
+				// Handle tilde expansion for ~ and ~/path
+				if strings.HasPrefix(targetDir, "~") {
+					home, err := os.UserHomeDir()
+					if err != nil {
+						fmt.Printf("cd: %s\n", err)
+						continue
+					}
+					// Replace ~ with home directory
+					targetDir = strings.Replace(targetDir, "~", home, 1)
+				}
+			}
+
+			// Change directory
+			if err := os.Chdir(targetDir); err != nil {
+				fmt.Printf("cd: %s\n", err)
+			}
 		default:
 			fmt.Printf("Command not found: %s\n", command)
 		}
