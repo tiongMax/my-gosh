@@ -49,16 +49,26 @@ func main() {
 			} else {
 				targetDir = parts[1]
 
-				// Handle tilde expansion for ~ and ~/path
-				if strings.HasPrefix(targetDir, "~") {
+				// Handle tilde expansion for ~ and ~/path or ~\path
+				if targetDir == "~" {
+					// Just tilde: expand to home directory
 					home, err := os.UserHomeDir()
 					if err != nil {
 						fmt.Printf("cd: %s\n", err)
 						continue
 					}
-					// Replace ~ with home directory
-					targetDir = strings.Replace(targetDir, "~", home, 1)
+					targetDir = home
+				} else if strings.HasPrefix(targetDir, "~/") || strings.HasPrefix(targetDir, "~\\") {
+					// Tilde with separator: replace ~ with home, keeping the rest
+					home, err := os.UserHomeDir()
+					if err != nil {
+						fmt.Printf("cd: %s\n", err)
+						continue
+					}
+					// Remove the ~ and join with home directory
+					targetDir = home + targetDir[1:]
 				}
+				// Note: paths like ~foo are left unchanged (not expanded)
 			}
 
 			// Change directory
