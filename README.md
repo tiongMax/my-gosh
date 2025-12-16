@@ -21,9 +21,9 @@ I am building this project over one week, adding new commands and complexity dai
 - [x] **Day 2: Navigation**
   - [x] Commands: `pwd`, `cd`
   - [x] Concepts: Process state, `os.Getwd`, `os.Chdir`
-- [ ] **Day 3: Inspection**
-  - [ ] Commands: `ls`, `cat`
-  - [ ] Concepts: File descriptors, `os.ReadDir`, `os.ReadFile`
+- [x] **Day 3: Inspection**
+  - [x] Commands: `ls`, `cat`
+  - [x] Concepts: File descriptors, `os.ReadDir`, `os.ReadFile`
 - [ ] **Day 4: Creation**
   - [ ] Commands: `mkdir`, `touch`
   - [ ] Concepts: File permissions (0755), `os.Create`
@@ -62,6 +62,13 @@ I am building this project over one week, adding new commands and complexity dai
     hello world
     gosh> pwd
     C:\Users\USER\Desktop\my-gosh
+    gosh> ls
+    main.go
+    README.md
+    .gitignore
+    gosh> cat README.md
+    # GoShell 🐚
+    ...
     gosh> cd ~
     gosh> pwd
     C:\Users\USER
@@ -94,7 +101,17 @@ I discovered that `cd` **must** be implemented as a shell builtin (not an extern
 * Implemented tilde expansion: `cd ~` and `cd ~/path` work correctly
 * Used `os.UserHomeDir()` to portably get the user's home across Windows/Linux/macOS
 
-### **3. File Streams**
+### **3. File System Operations & Directory Inspection**
+I learned how Go provides high-level abstractions for file system operations that hide the complexity of file descriptors and system calls.
+
+**Key Implementation Details:**
+* `os.ReadDir()` returns a slice of `os.DirEntry` (lightweight directory entries)
+* Each `DirEntry` provides `.Name()` and `.IsDir()` methods without needing to stat the file
+* `os.ReadFile()` handles the entire file lifecycle: open → read → close in one call
+* Implemented visual distinction: directories get `/` suffix using `.IsDir()` check
+* Both commands support multiple arguments (e.g., `ls dir1 dir2`, `cat file1.txt file2.txt`)
+
+### **4. File Streams**
 *Upcoming: Notes on `io.Copy`, file descriptors, and using `defer` for resource cleanup.*
 
 ---
@@ -126,8 +143,13 @@ I discovered that `cd` **must** be implemented as a shell builtin (not an extern
   * Proper error handling when directory doesn't exist or permission denied
 * **Technical Insight:** Windows uses backslashes (`\`) while Unix uses forward slashes (`/`) for paths, but Go's `os` package handles both transparently. The shell correctly displays Windows-style paths on Windows and Unix-style paths on Unix systems.
 
-### Day 3: Inspection
-* *Pending...*
+### Day 3: Inspection ✅
+* **Progress:** Implemented file system inspection commands with support for multiple targets.
+* **Commands Implemented:** `ls`, `cat`
+* **Key Learning:** `os.ReadDir()` returns `DirEntry` objects (not `FileInfo`), which are lightweight and only contain basic metadata. 
+* **Challenges Solved:**
+  * Handling multiple directories/files in one command (e.g., `ls . .. ~/Desktop`)
+* **Technical Insight:** `os.ReadFile()` is a convenience function that opens, reads entirely into memory, and closes the file automatically. 
 
 </details>
 
