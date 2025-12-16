@@ -75,6 +75,52 @@ func main() {
 			if err := os.Chdir(targetDir); err != nil {
 				fmt.Printf("cd: %s\n", err)
 			}
+		case "ls":
+			// If no arguments, list current directory
+			targets := []string{"."}
+			if len(parts) >= 2 {
+				targets = parts[1:]
+			}
+
+			// List each target
+			for i, targetDir := range targets {
+				// Print header if multiple targets
+				if len(targets) > 1 {
+					if i > 0 {
+						fmt.Println() // Blank line between listings
+					}
+					fmt.Printf("%s:\n", targetDir)
+				}
+
+				files, err := os.ReadDir(targetDir)
+				if err != nil {
+					fmt.Printf("ls: cannot access %s: No such file or directory\n", targetDir)
+					continue // Skip this target, move to next
+				}
+
+				for _, file := range files {
+					if file.IsDir() {
+						fmt.Printf("%s/\n", file.Name())
+					} else {
+						fmt.Println(file.Name())
+					}
+				}
+			}
+		case "cat":
+			if len(parts) < 2 {
+				fmt.Println("cat: missing operand")
+				continue
+			}
+
+			// Read and display each file
+			for _, targetFile := range parts[1:] {
+				content, err := os.ReadFile(targetFile)
+				if err != nil {
+					fmt.Printf("cat: %s: %s\n", targetFile, err)
+					continue // Skip this file, try next one
+				}
+				fmt.Print(string(content))
+			}
 		default:
 			fmt.Printf("Command not found: %s\n", command)
 		}
