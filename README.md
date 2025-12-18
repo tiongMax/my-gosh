@@ -24,9 +24,9 @@ I am building this project over one week, adding new commands and complexity dai
 - [x] **Day 3: Inspection**
   - [x] Commands: `ls`, `cat`
   - [x] Concepts: File descriptors, `os.ReadDir`, `os.ReadFile`
-- [ ] **Day 4: Creation**
-  - [ ] Commands: `mkdir`, `touch`
-  - [ ] Concepts: File permissions (0755), `os.Create`
+- [x] **Day 4: Creation**
+  - [x] Commands: `mkdir`, `touch`
+  - [x] Concepts: File permissions (0755), `os.Create`, Resource management
 - [ ] **Day 5: Manipulation**
   - [ ] Commands: `mv`, `cp`
   - [ ] Concepts: IO Streaming (`io.Copy`), Buffer management
@@ -66,13 +66,18 @@ I am building this project over one week, adding new commands and complexity dai
     main.go
     README.md
     .gitignore
-    gosh> cat README.md
-    # GoShell 🐚
-    ...
+    gosh> mkdir testdir
+    gosh> touch newfile.txt
+    gosh> ls
+    main.go
+    README.md
+    testdir/
+    newfile.txt
+    gosh> cat newfile.txt
+    (empty)
     gosh> cd ~
     gosh> pwd
     C:\Users\USER
-    gosh> cd Desktop/my-gosh
     gosh> exit
     Goodbye!
     ```
@@ -111,7 +116,20 @@ I learned how Go provides high-level abstractions for file system operations tha
 * Implemented visual distinction: directories get `/` suffix using `.IsDir()` check
 * Both commands support multiple arguments (e.g., `ls dir1 dir2`, `cat file1.txt file2.txt`)
 
-### **4. File Streams**
+### **4. File Creation & Resource Management**
+I learned that Go requires explicit resource management for file handles, unlike memory which is garbage collected automatically. This was my first encounter with the critical concept of **resource cleanup**.
+
+**Key Implementation Details:**
+* `os.Mkdir(path, 0755)` creates directories with Unix permissions (rwxr-xr-x)
+* Permission `0755` means: owner can read/write/execute, group and others can read/execute
+* `os.Create()` returns a file handle (`*os.File`) that must be closed to prevent resource leaks
+* **Critical:** Always call `file.Close()` after creating files, or the OS will run out of file descriptors
+* `os.Stat()` checks if a file/directory exists without opening it
+* `os.IsNotExist(err)` distinguishes "file not found" from other errors (permission denied, etc.)
+* `os.Chtimes()` updates file access and modification timestamps
+* Advanced `touch` implementation: creates new files OR updates timestamps on existing files (matches Unix behavior)
+
+### **5. File Streams**
 *Upcoming: Notes on `io.Copy`, file descriptors, and using `defer` for resource cleanup.*
 
 ---
@@ -150,6 +168,17 @@ I learned how Go provides high-level abstractions for file system operations tha
 * **Challenges Solved:**
   * Handling multiple directories/files in one command (e.g., `ls . .. ~/Desktop`)
 * **Technical Insight:** `os.ReadFile()` is a convenience function that opens, reads entirely into memory, and closes the file automatically. 
+
+### Day 4: Creation ✅
+* **Progress:** Implemented file and directory creation commands with proper resource management.
+* **Commands Implemented:** `mkdir`, `touch`
+* **Key Learning:** Go does **not** automatically garbage collect file handles! Unlike memory management, you must explicitly close files or you'll leak resources and eventually crash when the OS runs out of file descriptors.
+* **Challenges Solved:**
+  * Understanding Unix file permissions in octal notation (`0755` = rwxr-xr-x)
+  * Distinguishing between "file doesn't exist" vs "permission denied" errors using `os.IsNotExist()`
+  * Implementing advanced `touch` behavior: updating timestamps on existing files vs creating new ones
+  * Properly closing file handles immediately after creation (can't use `defer` in a loop)
+* **Technical Insight:** Windows largely ignores Unix permission bits (0755), but Go accepts them for cross-platform compatibility. The real insight was learning that `os.Create()` returns a file handle that holds system resources - forgetting to close it is like opening a connection and never releasing it. This was my first real encounter with **manual resource management** in Go.
 
 </details>
 
