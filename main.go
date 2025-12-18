@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -120,6 +121,45 @@ func main() {
 					continue // Skip this file, try next one
 				}
 				fmt.Print(string(content))
+			}
+		case "mkdir":
+			if len(parts) < 2 {
+				fmt.Println("mkdir: missing operand")
+				continue
+			}
+			for _, targetDir := range parts[1:] {
+				err := os.Mkdir(targetDir, 0755)
+				if err != nil {
+					fmt.Printf("mkdir: %s: %s\n", targetDir, err)
+				}
+			}
+		case "touch":
+			if len(parts) < 2 {
+				fmt.Println("touch: missing operand")
+				continue
+			}
+			for _, targetFile := range parts[1:] {
+				// Check if file exists
+				_, err := os.Stat(targetFile)
+				if err == nil {
+					// File exists: update timestamp to current time
+					now := time.Now()
+					err = os.Chtimes(targetFile, now, now)
+					if err != nil {
+						fmt.Printf("touch: %s: %s\n", targetFile, err)
+					}
+				} else if os.IsNotExist(err) {
+					// File doesn't exist: create it
+					file, err := os.Create(targetFile)
+					if err != nil {
+						fmt.Printf("touch: %s: %s\n", targetFile, err)
+						continue
+					}
+					file.Close()
+				} else {
+					// Other error (permission denied, etc.)
+					fmt.Printf("touch: %s: %s\n", targetFile, err)
+				}
 			}
 		default:
 			fmt.Printf("Command not found: %s\n", command)
