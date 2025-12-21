@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -160,6 +161,41 @@ func main() {
 					// Other error (permission denied, etc.)
 					fmt.Printf("touch: %s: %s\n", targetFile, err)
 				}
+			}
+		case "cp":
+			if len(parts) < 3 {
+				fmt.Println("cp: missing operand")
+				continue
+			}
+			source := parts[1]
+			destination := parts[2]
+			sourceFile, err := os.Open(source)
+			if err != nil {
+				fmt.Printf("cp: %s: %s\n", source, err)
+				continue
+			}
+			destinationFile, err := os.Create(destination)
+			if err != nil {
+				fmt.Printf("cp: %s: %s\n", destination, err)
+				sourceFile.Close()
+				continue
+			}
+			_, err = io.Copy(destinationFile, sourceFile)
+			if err != nil {
+				fmt.Printf("cp: %s: %s\n", destination, err)
+			}
+			sourceFile.Close()
+			destinationFile.Close()
+		case "mv":
+			if len(parts) < 3 {
+				fmt.Println("mv: missing operand")
+				continue
+			}
+			source := parts[1]
+			destination := parts[2]
+			err := os.Rename(source, destination)
+			if err != nil {
+				fmt.Printf("mv: %s: %s\n", destination, err)
 			}
 		default:
 			fmt.Printf("Command not found: %s\n", command)
