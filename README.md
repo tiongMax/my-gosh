@@ -27,9 +27,9 @@ I am building this project over one week, adding new commands and complexity dai
 - [x] **Day 4: Creation**
   - [x] Commands: `mkdir`, `touch`
   - [x] Concepts: File permissions (0755), `os.Create`, Resource management
-- [ ] **Day 5: Manipulation**
-  - [ ] Commands: `mv`, `cp`
-  - [ ] Concepts: IO Streaming (`io.Copy`), Buffer management
+- [x] **Day 5: Manipulation**
+  - [x] Commands: `mv`, `cp`
+  - [x] Concepts: IO Streaming (`io.Copy`), Buffer management
 - [ ] **Day 6: Destruction**
   - [ ] Commands: `rm`, `rmdir`
   - [ ] Concepts: Safety checks, recursive deletion
@@ -129,8 +129,13 @@ I learned that Go requires explicit resource management for file handles, unlike
 * `os.Chtimes()` updates file access and modification timestamps
 * Advanced `touch` implementation: creates new files OR updates timestamps on existing files (matches Unix behavior)
 
-### **5. File Streams**
-*Upcoming: Notes on `io.Copy`, file descriptors, and using `defer` for resource cleanup.*
+### **5. File Streams & Manipulation**
+I implemented `cp` and `mv`, learning how to efficiently stream data between files using buffers instead of loading everything into memory.
+
+**Key Implementation Details:**
+*   `io.Copy(dst, src)` handles the heavy lifting of transferring bytes
+*   **Critical Bug Fix:** Learned NOT to `defer file.Close()` inside a loop (it only runs at function exit). Instead, I had to manually close files to prevent resource leaks.
+*   **Atomic Operations:** `mv` uses `os.Rename()` which is an atomic system call (instant), whereas `cp` must physically copy data byte-by-byte.
 
 ---
 
@@ -179,6 +184,16 @@ I learned that Go requires explicit resource management for file handles, unlike
   * Implementing advanced `touch` behavior: updating timestamps on existing files vs creating new ones
   * Properly closing file handles immediately after creation (can't use `defer` in a loop)
 * **Technical Insight:** Windows largely ignores Unix permission bits (0755), but Go accepts them for cross-platform compatibility. The real insight was learning that `os.Create()` returns a file handle that holds system resources - forgetting to close it is like opening a connection and never releasing it. This was my first real encounter with **manual resource management** in Go.
+
+### Day 5: Manipulation ✅
+* **Progress:** Added `cp` (copy) and `mv` (move) commands, introducing input/output streaming.
+* **Commands Implemented:** `cp`, `mv`
+* **Key Learning:** `io.Copy` is a powerful abstraction that streams data between any `Reader` and `Writer`. It uses a small buffer (usually 32KB) so you can copy a 10GB file without using 10GB of RAM.
+* **Challenges Solved:**
+  * **Panic Fix:** I initially tried to close files even when `os.Open` returned an error (which meant the file pointer was `nil`). This caused the shell to crash. I learned to only close resources that were successfully acquired.
+  * **Defer Trap:** I reinforced the lesson that `defer` is dangerous inside a long-running REPL loop because cleanup happens too late.
+  * **Atomic Moves:** Implemented `mv` using `os.Rename`, which is much faster than copying, but learned it has limitations (cannot move across different disk partitions).
+* **Technical Insight:** The difference between "moving" data (changing a pointer in the filesystem table) and "copying" data (duplicating actual bytes) is fundamental to understanding OS performance.
 
 </details>
 
