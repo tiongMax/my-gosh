@@ -30,9 +30,9 @@ I am building this project over one week, adding new commands and complexity dai
 - [x] **Day 5: Manipulation**
   - [x] Commands: `mv`, `cp`
   - [x] Concepts: IO Streaming (`io.Copy`), Buffer management
-- [ ] **Day 6: Destruction**
-  - [ ] Commands: `rm`, `rmdir`
-  - [ ] Concepts: Safety checks, recursive deletion
+- [x] **Day 6: Destruction**
+  - [x] Commands: `rm`, `rmdir`
+  - [x] Concepts: Safety checks, recursive deletion
 - [ ] **Day 7: Search & History**
   - [ ] Commands: `grep`, `history`
   - [ ] Concepts: String processing, slice storage
@@ -137,6 +137,14 @@ I implemented `cp` and `mv`, learning how to efficiently stream data between fil
 *   **Critical Bug Fix:** Learned NOT to `defer file.Close()` inside a loop (it only runs at function exit). Instead, I had to manually close files to prevent resource leaks.
 *   **Atomic Operations:** `mv` uses `os.Rename()` which is an atomic system call (instant), whereas `cp` must physically copy data byte-by-byte.
 
+### **6. Safe Destruction & Recursive Logic**
+I implemented `rm` and `rmdir`, dealing with the dangerous reality of irreversible deletion. I learned to balance power (recursive delete) with safety (checks).
+
+**Key Implementation Details:**
+*   `os.Remove()`: Deletes a named file or directory. Crucially, the OS blocks this if the directory is not empty, providing a built-in safety net for `rmdir`.
+*   `os.RemoveAll()`: The "nuclear option" for `rm -r`. It deletes a path and any children it contains.
+*   **Defensive Programming:** Before deleting, I use `os.Stat()` to verify the target exists and check if it's a directory. This allows `rm` to refuse deleting directories without the `-r` flag, mimicking standard shell behavior.
+
 ---
 
 ## 📝 Dev Log
@@ -194,6 +202,15 @@ I implemented `cp` and `mv`, learning how to efficiently stream data between fil
   * **Defer Trap:** I reinforced the lesson that `defer` is dangerous inside a long-running REPL loop because cleanup happens too late.
   * **Atomic Moves:** Implemented `mv` using `os.Rename`, which is much faster than copying, but learned it has limitations (cannot move across different disk partitions).
 * **Technical Insight:** The difference between "moving" data (changing a pointer in the filesystem table) and "copying" data (duplicating actual bytes) is fundamental to understanding OS performance.
+
+### Day 6: Destruction ✅
+* **Progress:** Implemented safe deletion commands `rm` and `rmdir` with recursive capabilities.
+* **Commands Implemented:** `rm` (with `-r`), `rmdir`
+* **Key Learning:** The importance of safety checks before deletion. `rm` is dangerous because it's irreversible. Implementing `rm -r` required `os.RemoveAll`, which silently succeeds on non-existent paths, so I had to add explicit existence checks to match standard shell behavior.
+* **Challenges Solved:**
+  * **Safety First:** Ensuring `rmdir` fails on non-empty directories (using `os.Remove`) and `rm` fails on directories (using `os.Stat` + `.IsDir()`).
+  * **Recursive Logic:** Implementing the `-r` flag for `rm`.
+* **Technical Insight:** `os.Remove` works on both files and empty directories, but the OS blocks it if the directory has content. `os.RemoveAll` is the "nuclear option" that bypasses these checks.
 
 </details>
 
