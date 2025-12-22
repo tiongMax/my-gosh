@@ -197,6 +197,75 @@ func main() {
 			if err != nil {
 				fmt.Printf("mv: %s: %s\n", destination, err)
 			}
+		case "rm":
+			if len(parts) < 2 {
+				fmt.Println("rm: missing operand")
+				continue
+			}
+
+			recursive := false
+			args := parts[1:]
+
+			if parts[1] == "-r" {
+				recursive = true
+				if len(parts) < 3 {
+					fmt.Println("rm: missing operand after -r")
+					continue
+				}
+				args = parts[2:]
+			}
+
+			for _, target := range args {
+				// Common check for existence
+				info, err := os.Stat(target)
+				if err != nil {
+					if os.IsNotExist(err) {
+						fmt.Printf("rm: %s: No such file or directory\n", target)
+					} else {
+						fmt.Printf("rm: %s: %s\n", target, err)
+					}
+					continue
+				}
+
+				if recursive {
+					if err := os.RemoveAll(target); err != nil {
+						fmt.Printf("rm: %s: %s\n", target, err)
+					}
+				} else {
+					if info.IsDir() {
+						fmt.Printf("rm: %s: is a directory\n", target)
+						continue
+					}
+					if err := os.Remove(target); err != nil {
+						fmt.Printf("rm: %s: %s\n", target, err)
+					}
+				}
+			}
+		case "rmdir":
+			if len(parts) < 2 {
+				fmt.Println("rmdir: missing operand")
+				continue
+			}
+
+			for _, targetDir := range parts[1:] {
+				info, err := os.Stat(targetDir)
+				if err != nil {
+					if os.IsNotExist(err) {
+						fmt.Printf("rmdir: %s: No such directory\n", targetDir)
+					} else {
+						fmt.Printf("rmdir: %s: %s\n", targetDir, err)
+					}
+					continue
+				}
+
+				if info.IsDir() {
+					if err := os.Remove(targetDir); err != nil {
+						fmt.Printf("rmdir: %s: %s\n", targetDir, err)
+					}
+				} else {
+					fmt.Printf("rmdir: %s: not a directory\n", targetDir)
+				}
+			}
 		default:
 			fmt.Printf("Command not found: %s\n", command)
 		}
