@@ -64,8 +64,5 @@ func (s *Shell) Run() {
 		if err == commands.ErrExit {
 			return
 		}
-		if err != nil {
-			fmt.Fprintf(s.Stderr, "Error executing %s: %v\n", commandName, err)
-		}
 	}
 }
