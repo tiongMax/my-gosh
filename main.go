@@ -11,6 +11,7 @@ import (
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
+	history := []string{}
 	for {
 		fmt.Print("gosh> ")
 		if !scanner.Scan() {
@@ -22,6 +23,7 @@ func main() {
 		if len(parts) == 0 {
 			continue
 		}
+		history = append(history, input)
 
 		command := parts[0]
 		switch command {
@@ -265,6 +267,44 @@ func main() {
 				} else {
 					fmt.Printf("rmdir: %s: not a directory\n", targetDir)
 				}
+			}
+		case "grep":
+			if len(parts) < 3 {
+				fmt.Println("grep: missing operand")
+				continue
+			}
+			pattern := parts[1]
+			files := parts[2:]
+			for _, file := range files {
+				openFile, err := os.Open(file)
+				if err != nil {
+					fmt.Printf("grep: %s: %s\n", file, err)
+					continue
+				}
+				scanner := bufio.NewScanner(openFile)
+				for scanner.Scan() {
+					line := scanner.Text()
+					// Inside the loop...
+					if strings.Contains(line, pattern) {
+						if len(files) > 1 {
+							fmt.Printf("%s: %s\n", file, line) // Print filename for multiple files
+						} else {
+							fmt.Println(line) // Just the line for single file
+						}
+					}
+				}
+				if err := scanner.Err(); err != nil {
+					fmt.Printf("grep: %s: %s\n", file, err)
+				}
+				openFile.Close()
+			}
+		case "history":
+			if len(parts) > 1 {
+				fmt.Println("history: too many arguments")
+				continue
+			}
+			for i, entry := range history {
+				fmt.Printf("%d  %s\n", i+1, entry)
 			}
 		default:
 			fmt.Printf("Command not found: %s\n", command)
