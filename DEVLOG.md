@@ -1,0 +1,182 @@
+# GoShell Development Log
+
+This document tracks the development progress, technical learnings, and daily logs for the GoShell project.
+
+## 📅 Project Roadmap (7-Day Sprint)
+
+I am building this project over one week, adding new commands and complexity daily.
+
+- [x] **Day 1: The Engine**
+  - [x] REPL (Read-Eval-Print Loop)
+  - [x] Input parsing using `bufio`
+  - [x] Commands: `exit`, `echo`
+- [x] **Day 2: Navigation**
+  - [x] Commands: `pwd`, `cd`
+  - [x] Concepts: Process state, `os.Getwd`, `os.Chdir`
+- [x] **Day 3: Inspection**
+  - [x] Commands: `ls`, `cat`
+  - [x] Concepts: File descriptors, `os.ReadDir`, `os.ReadFile`
+- [x] **Day 4: Creation**
+  - [x] Commands: `mkdir`, `touch`
+  - [x] Concepts: File permissions (0755), `os.Create`, Resource management
+- [x] **Day 5: Manipulation**
+  - [x] Commands: `mv`, `cp`
+  - [x] Concepts: IO Streaming (`io.Copy`), Buffer management
+- [x] **Day 6: Destruction**
+  - [x] Commands: `rm`, `rmdir`
+  - [x] Concepts: Safety checks, recursive deletion
+- [x] **Day 7: Search & History**
+  - [x] Commands: `grep`, `history`
+  - [x] Concepts: String processing, slice storage, `bufio.Scanner` (line processing)
+
+---
+
+## 🧠 Technical Learnings
+
+*Documenting the specific Go concepts and System Programming challenges mastered.*
+
+### **1. Input Handling (`bufio` vs `fmt`)**
+I learned that standard `fmt.Scanln` is insufficient for a shell because it stops reading at the first whitespace. To support commands with arguments (like `echo hello world`), I used `bufio.NewScanner(os.Stdin)`, which captures the entire input stream up to the newline character.
+
+**Key Implementation Details:**
+* Created scanner once before the loop: `scanner := bufio.NewScanner(os.Stdin)`
+* Used `scanner.Scan()` return value to detect EOF and exit gracefully
+* Combined with `strings.Fields()` to intelligently parse input while handling edge cases (empty input, multiple spaces, tabs)
+
+### **2. System Interaction & Process State**
+I discovered that `cd` **must** be implemented as a shell builtin (not an external command) because it modifies the process's working directory. If `cd` were external, it would change the child process's directory, not the shell's.
+
+**Key Implementation Details:**
+* `os.Getwd()` retrieves the current working directory from the kernel
+* `os.Chdir()` changes the process's working directory via system call
+* Added home directory support: running `cd` with no arguments takes you home
+* Implemented tilde expansion: `cd ~` and `cd ~/path` work correctly
+* Used `os.UserHomeDir()` to portably get the user's home across Windows/Linux/macOS
+
+### **3. File System Operations & Directory Inspection**
+I learned how Go provides high-level abstractions for file system operations that hide the complexity of file descriptors and system calls.
+
+**Key Implementation Details:**
+* `os.ReadDir()` returns a slice of `os.DirEntry` (lightweight directory entries)
+* Each `DirEntry` provides `.Name()` and `.IsDir()` methods without needing to stat the file
+* `os.ReadFile()` handles the entire file lifecycle: open → read → close in one call
+* Implemented visual distinction: directories get `/` suffix using `.IsDir()` check
+* Both commands support multiple arguments (e.g., `ls dir1 dir2`, `cat file1.txt file2.txt`)
+
+### **4. File Creation & Resource Management**
+I learned that Go requires explicit resource management for file handles, unlike memory which is garbage collected automatically. This was my first encounter with the critical concept of **resource cleanup**.
+
+**Key Implementation Details:**
+* `os.Mkdir(path, 0755)` creates directories with Unix permissions (rwxr-xr-x)
+* Permission `0755` means: owner can read/write/execute, group and others can read/execute
+* `os.Create()` returns a file handle (`*os.File`) that must be closed to prevent resource leaks
+* **Critical:** Always call `file.Close()` after creating files, or the OS will run out of file descriptors
+* `os.Stat()` checks if a file/directory exists without opening it
+* `os.IsNotExist(err)` distinguishes "file not found" from other errors (permission denied, etc.)
+* `os.Chtimes()` updates file access and modification timestamps
+* Advanced `touch` implementation: creates new files OR updates timestamps on existing files (matches Unix behavior)
+
+### **5. File Streams & Manipulation**
+I implemented `cp` and `mv`, learning how to efficiently stream data between files using buffers instead of loading everything into memory.
+
+**Key Implementation Details:**
+*   `io.Copy(dst, src)` handles the heavy lifting of transferring bytes
+*   **Critical Bug Fix:** Learned NOT to `defer file.Close()` inside a loop (it only runs at function exit). Instead, I had to manually close files to prevent resource leaks.
+*   **Atomic Operations:** `mv` uses `os.Rename()` which is an atomic system call (instant), whereas `cp` must physically copy data byte-by-byte.
+
+### **6. Safe Destruction & Recursive Logic**
+I implemented `rm` and `rmdir`, dealing with the dangerous reality of irreversible deletion. I learned to balance power (recursive delete) with safety (checks).
+
+**Key Implementation Details:**
+*   `os.Remove()`: Deletes a named file or directory. Crucially, the OS blocks this if the directory is not empty, providing a built-in safety net for `rmdir`.
+*   `os.RemoveAll()`: The "nuclear option" for `rm -r`. It deletes a path and any children it contains.
+*   **Defensive Programming:** Before deleting, I use `os.Stat()` to verify the target exists and check if it's a directory. This allows `rm` to refuse deleting directories without the `-r` flag, mimicking standard shell behavior.
+
+### **7. State Management & Text Processing**
+I added `history` and `grep` to give the shell memory and data processing capabilities.
+
+**Key Implementation Details:**
+*   **Persistent State:** Defined the `history` slice *outside* the main loop so it persists for the session.
+*   **Line-by-Line Processing:** `grep` uses `bufio.Scanner` to process files line-by-line, which is memory efficient.
+*   **String Matching:** Used `strings.Contains()` to filter lines.
+*   **Multi-File Handling:** `grep` can search multiple files, and intelligently prints the filename prefix only when necessary.
+
+---
+
+## 📝 Dev Log
+
+<details>
+<summary><strong>Click to expand Daily Logs</strong></summary>
+
+### Day 1: The Engine ✅
+* **Progress:** Built the complete REPL (Read-Eval-Print Loop) with robust input parsing and command execution.
+* **Commands Implemented:** `exit`, `echo`
+* **Key Learning:** `strings.Fields()` is much better than `strings.Split()` for CLI parsing because it automatically ignores multiple spaces between arguments and handles tabs/newlines.
+* **Challenges Solved:**
+  * Gracefully handling EOF (Ctrl+D/Ctrl+Z) using `scanner.Scan()` return value
+  * Preventing panic on empty input by checking `len(parts) == 0` after `strings.Fields()`
+  * Handling whitespace-only input (spaces/tabs) that would create empty slices
+  * Understanding `break` (exits loop/switch) vs `return` (exits function) for the `exit` command
+* **Technical Insight:** The scanner must be created **once** before the loop (not inside it) for efficiency, as it maintains an internal buffer that would be lost if recreated each iteration.
+
+### Day 2: Navigation ✅
+* **Progress:** Implemented directory navigation commands with robust path handling.
+* **Commands Implemented:** `pwd`, `cd`
+* **Key Learning:** The `cd` command **must** be a shell builtin because it changes the shell process's own working directory. If it were an external program, it would only change the child process's directory and have no effect on the parent shell.
+* **Challenges Solved:**
+  * Handling `cd` with no arguments (should go to home directory)
+  * Implementing tilde expansion (`~` and `~/path`) using `strings.HasPrefix()` and `strings.Replace()`
+  * Cross-platform home directory detection using `os.UserHomeDir()`
+  * Proper error handling when directory doesn't exist or permission denied
+* **Technical Insight:** Windows uses backslashes (`\`) while Unix uses forward slashes (`/`) for paths, but Go's `os` package handles both transparently. The shell correctly displays Windows-style paths on Windows and Unix-style paths on Unix systems.
+
+### Day 3: Inspection ✅
+* **Progress:** Implemented file system inspection commands with support for multiple targets.
+* **Commands Implemented:** `ls`, `cat`
+* **Key Learning:** `os.ReadDir()` returns `DirEntry` objects (not `FileInfo`), which are lightweight and only contain basic metadata. 
+* **Challenges Solved:**
+  * Handling multiple directories/files in one command (e.g., `ls . .. ~/Desktop`)
+* **Technical Insight:** `os.ReadFile()` is a convenience function that opens, reads entirely into memory, and closes the file automatically. 
+
+### Day 4: Creation ✅
+* **Progress:** Implemented file and directory creation commands with proper resource management.
+* **Commands Implemented:** `mkdir`, `touch`
+* **Key Learning:** Go does **not** automatically garbage collect file handles! Unlike memory management, you must explicitly close files or you'll leak resources and eventually crash when the OS runs out of file descriptors.
+* **Challenges Solved:**
+  * Understanding Unix file permissions in octal notation (`0755` = rwxr-xr-x)
+  * Distinguishing between "file doesn't exist" vs "permission denied" errors using `os.IsNotExist()`
+  * Implementing advanced `touch` behavior: updating timestamps on existing files vs creating new ones
+  * Properly closing file handles immediately after creation (can't use `defer` in a loop)
+* **Technical Insight:** Windows largely ignores Unix permission bits (0755), but Go accepts them for cross-platform compatibility. The real insight was learning that `os.Create()` returns a file handle that holds system resources - forgetting to close it is like opening a connection and never releasing it. This was my first real encounter with **manual resource management** in Go.
+
+### Day 5: Manipulation ✅
+* **Progress:** Added `cp` (copy) and `mv` (move) commands, introducing input/output streaming.
+* **Commands Implemented:** `cp`, `mv`
+* **Key Learning:** `io.Copy` is a powerful abstraction that streams data between any `Reader` and `Writer`. It uses a small buffer (usually 32KB) so you can copy a 10GB file without using 10GB of RAM.
+* **Challenges Solved:**
+  * **Panic Fix:** I initially tried to close files even when `os.Open` returned an error (which meant the file pointer was `nil`). This caused the shell to crash. I learned to only close resources that were successfully acquired.
+  * **Defer Trap:** I reinforced the lesson that `defer` is dangerous inside a long-running REPL loop because cleanup happens too late.
+  * **Atomic Moves:** Implemented `mv` using `os.Rename`, which is much faster than copying, but learned it has limitations (cannot move across different disk partitions).
+* **Technical Insight:** The difference between "moving" data (changing a pointer in the filesystem table) and "copying" data (duplicating actual bytes) is fundamental to understanding OS performance.
+
+### Day 6: Destruction ✅
+* **Progress:** Implemented safe deletion commands `rm` and `rmdir` with recursive capabilities.
+* **Commands Implemented:** `rm` (with `-r`), `rmdir`
+* **Key Learning:** The importance of safety checks before deletion. `rm` is dangerous because it's irreversible. Implementing `rm -r` required `os.RemoveAll`, which silently succeeds on non-existent paths, so I had to add explicit existence checks to match standard shell behavior.
+* **Challenges Solved:**
+  * **Safety First:** Ensuring `rmdir` fails on non-empty directories (using `os.Remove`) and `rm` fails on directories (using `os.Stat` + `.IsDir()`).
+  * **Recursive Logic:** Implementing the `-r` flag for `rm`.
+* **Technical Insight:** `os.Remove` works on both files and empty directories, but the OS blocks it if the directory has content. `os.RemoveAll` is the "nuclear option" that bypasses these checks.
+
+### Day 7: Search & History ✅
+* **Progress:** Added the final touches: command history and text search functionality.
+* **Commands Implemented:** `history`, `grep`
+* **Key Learning:** State management within a REPL loop. I learned that `history` requires a persistent slice defined *outside* the command loop, whereas per-command variables must be defined inside.
+* **Challenges Solved:**
+  * **Memory Persistence:** Moving the `history` slice definition outside the `for` loop so it persists for the session.
+  * **Efficient Search:** Using `bufio.Scanner` again to read files line-by-line for `grep`, which is memory-efficient compared to `os.ReadFile` (which loads the whole file).
+  * **Resource Safety:** Explicitly closing files in `grep` after each iteration to prevent file descriptor leaks when searching multiple files.
+* **Technical Insight:** `grep` is essentially a filter. By checking `strings.Contains()` on every line, I re-implemented the core logic of one of the most powerful Unix tools in just a few lines of Go.
+
+</details>
+
