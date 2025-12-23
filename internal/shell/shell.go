@@ -9,6 +9,7 @@ import (
 	"my-gosh/internal/commands"
 )
 
+// Shell represents the interactive shell environment
 type Shell struct {
 	Stdin   io.Reader
 	Stdout  io.Writer
@@ -16,6 +17,7 @@ type Shell struct {
 	History []string
 }
 
+// New creates a new Shell instance with the provided I/O streams
 func New(stdin io.Reader, stdout, stderr io.Writer) *Shell {
 	return &Shell{
 		Stdin:   stdin,
@@ -25,6 +27,7 @@ func New(stdin io.Reader, stdout, stderr io.Writer) *Shell {
 	}
 }
 
+// Run starts the shell's main Read-Eval-Print Loop (REPL)
 func (s *Shell) Run() {
 	scanner := bufio.NewScanner(s.Stdin)
 	for {

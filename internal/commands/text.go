@@ -13,9 +13,13 @@ func init() {
 	Register(&EchoCommand{})
 }
 
+// CatCommand handles the 'cat' command to concatenate and display files
 type CatCommand struct{}
 
+// Name returns the name of the command
 func (c *CatCommand) Name() string { return "cat" }
+
+// Execute reads and prints the content of the specified files
 func (c *CatCommand) Execute(ctx *Context) error {
 	if len(ctx.Args) < 1 {
 		fmt.Fprintln(ctx.Stderr, "cat: missing operand")
@@ -34,9 +38,13 @@ func (c *CatCommand) Execute(ctx *Context) error {
 	return nil
 }
 
+// GrepCommand handles the 'grep' command to search for patterns in files
 type GrepCommand struct{}
 
+// Name returns the name of the command
 func (c *GrepCommand) Name() string { return "grep" }
+
+// Execute searches for the pattern in the specified files
 func (c *GrepCommand) Execute(ctx *Context) error {
 	if len(ctx.Args) < 2 {
 		fmt.Fprintln(ctx.Stderr, "grep: missing operand")
@@ -70,9 +78,13 @@ func (c *GrepCommand) Execute(ctx *Context) error {
 	return nil
 }
 
+// EchoCommand handles the 'echo' command to print arguments to standard output
 type EchoCommand struct{}
 
+// Name returns the name of the command
 func (c *EchoCommand) Name() string { return "echo" }
+
+// Execute prints the arguments joined by spaces
 func (c *EchoCommand) Execute(ctx *Context) error {
 	fmt.Fprintln(ctx.Stdout, strings.Join(ctx.Args, " "))
 	return nil
